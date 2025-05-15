@@ -1,6 +1,7 @@
 import socket                 
 import struct #for packing/unpacking binary data
-import random               
+import random
+import zlib               
 
 receiver_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 receiver_address = ('localhost', 12345)                            
@@ -12,16 +13,27 @@ def simulate_packet_loss():
     return random.random() > 0.1  # 90% chance to process the packet
 
 
+def verify_checksum(packet):
+    data = packet[:-2] #as last 2 bytes is checksum, 16 bits
+    recv_checksum = struct.unpack('!H', packet[-2:])[0]
+    calc_checksum = zlib.crc32(data) & 0xFFFF
+    return recv_checksum == calc_checksum #if true no corruption
+
+
 def main():
     global expected_seq_num   
     
     while True:           
         packet, addr = receiver_socket.recvfrom(4096) 
 
+        if not verify_checksum(packet):
+            print("checksum failed, discarding corrupted packet")
+            continue
+
         if simulate_packet_loss(): #only process packet if "not lost", randomly here
 
             seq_num = struct.unpack('!I', packet[:4])[0] 
-            data = packet[4:].decode('utf-8') 
+            data = packet[4:-2].decode('utf-8') 
 
             if seq_num == expected_seq_num:                # if packet is the expected one
                 print(f"Received expected packet: {data} with seq {seq_num}")
