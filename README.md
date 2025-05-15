@@ -35,3 +35,5 @@ UDP by default does not guarantee packet delivery or ordering. These protocols a
 1. Run the receiver first:
    ```bash
    python receiver.py
+   
+   python sender.py
